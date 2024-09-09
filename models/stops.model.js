@@ -10,7 +10,7 @@ class Stops {
                 FROM
                     ${this.tableName}
                 WHERE
-                    stop_id = ${stopId}
+                    stop_id = '${stopId}'
             `
 
         )

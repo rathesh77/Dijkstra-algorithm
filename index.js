@@ -57,8 +57,8 @@ app.listen(8080, async () => {
 })
 
 app.get('/shortest_path/:departure/:destination', async (req, res) => {
-    const departure = parseInt(req.params['departure'])
-    const destination = parseInt(req.params['destination'])
+    const departure = (req.params['departure'])
+    const destination = (req.params['destination'])
     console.log(departure, destination)
     if (!graph.getNodes().has(departure) || !graph.getNodes().has(destination)) {
         res.send({ error: 'starting or ending stop not found' })
@@ -182,6 +182,11 @@ async function buildTreeFromDeparture() {
         }
 
     }
+    /*let testNode = graph.getNodes().get('IDFM:monomodalStopPlace:43239') // IDFM:22552 IDFM:26070 IDFM:30014 IDFM:461495
+     testNode.getNexts().forEach(element => {
+        console.log(element.info)
+
+    });*/
 }
 
 

@@ -113,7 +113,7 @@
             const regex = new RegExp(`^${givenStation}.{0,}$`, 'gi')
             let matches = stations.filter((s) => s.stop_name.match(regex))
             if (matches.length && givenStation.length) {
-                ns.nextSibling.innerHTML += matches.reduce((acc, curr) => `${acc}\n<li onclick='updateInput(event,this)'>${curr.stop_name} ${(curr.stop_id)}</li>`, '')
+                //ns.nextSibling.innerHTML += matches.reduce((acc, curr) => `${acc}\n<li onclick='updateInput(event,this)'>${curr.stop_name} ${(curr.stop_id)}</li>`, '')
             }
         }
         function updateInput(e, parent) {
