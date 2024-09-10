@@ -2,6 +2,8 @@ drop
   index if exists trips_stops_idx;
 drop 
   table if exists stops CASCADE;
+  drop 
+  table if exists  agency CASCADE;
 drop 
   table if exists transfers CASCADE;
 drop 
@@ -12,6 +14,19 @@ drop
   table if exists trips CASCADE;
 drop 
   table if exists routes CASCADE;
+  CREATE TABLE agency (
+    agency_id VARCHAR(256) PRIMARY KEY,
+    agency_name VARCHAR(256),
+    agency_url VARCHAR(256),
+    agency_timezone VARCHAR(256),
+    agency_lang VARCHAR(256),
+    agency_phone VARCHAR(256),
+    agency_email VARCHAR(256),
+    agency_fare_url VARCHAR(256),
+    ticketing_deep_link_id VARCHAR(256)
+
+  );
+
 CREATE TABLE stops (
   stop_id VARCHAR(256) PRIMARY KEY, 
   stop_code VARCHAR(256), 
@@ -82,6 +97,7 @@ COPY transfers (
 COPY  stop_times (trip_id,arrival_time,departure_time,stop_id,stop_sequence,pickup_type,drop_off_type,local_zone_id,stop_headsign,timepoint) FROM 'gtfs/stop_times.txt' DELIMITER ',' CSV HEADER;
 COPY routes FROM 'gtfs/routes.txt' DELIMITER ',' CSV HEADER;
 COPY trips FROM 'gtfs/trips.txt' DELIMITER ',' CSV HEADER;
+COPY agency FROM 'gtfs/agency.txt' DELIMITER ',' CSV HEADER;
 
 select * from routes;
 select count(*) from stops;
@@ -361,3 +377,94 @@ WHERE
 ORDER BY 
   trip_id, 
   st.stop_sequence
+
+SELECT
+	*
+FROM
+	(
+		SELECT
+			R.ROUTE_ID,
+			R.ROUTE_SHORT_NAME,
+			ST.TRIP_ID,
+			S.STOP_ID,
+			S.STOP_NAME,
+			S.STOP_DESC,
+			STOP_LAT,
+			STOP_LON,
+			SOMME,
+			ROWNUM,
+			ST.STOP_SEQUENCE,
+			ST.DEPARTURE_TIME
+		FROM
+			(
+				SELECT
+					S2.ROUTE_ID,
+					S2.TRIP_ID,
+					S2.SOMME,
+					ROW_NUMBER() OVER (
+						PARTITION BY
+							S2.ROUTE_ID
+					) AS ROWNUM
+				FROM
+					(
+						SELECT
+							SUB.ROUTE_ID,
+							MAX(SUB.SOMME) AS SOMME
+						FROM
+							(
+								SELECT
+									T.ROUTE_ID,
+									ST.TRIP_ID,
+									SUM((STOP_SEQUENCE)::INT) AS SOMME
+								FROM
+									ROUTES AS R
+									INNER JOIN TRIPS AS T ON R.ROUTE_ID = T.ROUTE_ID
+									INNER JOIN STOP_TIMES AS ST ON ST.TRIP_ID = T.TRIP_ID
+								GROUP BY
+									T.ROUTE_ID,
+									ST.TRIP_ID
+								ORDER BY
+									T.ROUTE_ID
+							) AS SUB
+						GROUP BY
+							SUB.ROUTE_ID
+					) AS S1,
+					(
+						SELECT
+							T.ROUTE_ID,
+							ST.TRIP_ID,
+							SUM((STOP_SEQUENCE)::INT) AS SOMME
+						FROM
+							ROUTES AS R
+							INNER JOIN TRIPS AS T ON R.ROUTE_ID = T.ROUTE_ID
+							INNER JOIN STOP_TIMES AS ST ON ST.TRIP_ID = T.TRIP_ID
+						GROUP BY
+							T.ROUTE_ID,
+							ST.TRIP_ID
+						ORDER BY
+							T.ROUTE_ID
+					) AS S2
+				WHERE
+					S2.ROUTE_ID = S1.ROUTE_ID
+					AND S1.SOMME = S2.SOMME
+				GROUP BY
+					S2.ROUTE_ID,
+					S2.TRIP_ID,
+					S2.SOMME
+			) AS S3,
+			STOP_TIMES AS ST,
+			TRIPS AS T,
+			STOPS AS S,
+			ROUTES AS R
+		WHERE
+			ROWNUM = 1
+			AND S.STOP_ID = ST.STOP_ID
+			AND ST.TRIP_ID = S3.TRIP_ID
+			AND ST.TRIP_ID = T.TRIP_ID
+			AND T.ROUTE_ID = R.ROUTE_ID
+		ORDER BY
+			R.ROUTE_ID,
+			ST.STOP_SEQUENCE
+	) AS SS
+WHERE
+	SS.ROUTE_ID = 'IDFM:C01742';

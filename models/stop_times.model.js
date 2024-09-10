@@ -12,50 +12,68 @@ class StopTimes {
     static async getAll() {
         const result = await Postgres.client.query(
             `
-            select
-            r.route_short_name,
-            st.trip_id,
-            s.stop_id,
-            s.stop_name,
-            s.stop_desc,
-            stop_lat,
-            stop_lon,
-            cts,
-            st.stop_sequence,
-            st.departure_time
-        FROM
-            (SELECT
-                st.stop_id,
-                min(st.trip_id) as trip_id,
-                cts
+            SELECT 
+                        r.route_id,
+                        r.route_short_name,
+                        st.trip_id,
+                        s.stop_id,
+                        s.stop_name,
+                        s.stop_desc,
+                        stop_lat,
+                        stop_lon,
+                        somme,
+                        rownum,
+                        st.stop_sequence,
+                        st.departure_time
+            FROM (
+
+            SELECT
+                s2.route_id, s2.trip_id, s2.somme, row_number() over (partition by s2.route_id) as rownum 
             FROM
-                stop_times as st,
-                (
-                SELECT
-                    trip_id,
-                    count(stop_id) as cts
-                FROM
-                    stop_times
-                GROUP BY trip_id
-					HAVING
-		  (substring(min(departure_time), 1, 2)::int >= EXTRACT(HOUR FROM NOW())
-			 AND substring(min(departure_time), 4, 2)::int >= EXTRACT(MINUTE FROM NOW())
-		)
-                ORDER BY trip_id
-                ) as sub
-            WHERE st.trip_id = sub.trip_id
-            GROUP BY st.stop_id, cts
-            order by st.stop_id) as sub,
-            stop_times as st,
-            trips as t,
-            stops as s,
-            routes as r
-        WHERE st.stop_id = sub.stop_id
-        AND s.stop_id = st.stop_id
-        AND st.trip_id = sub.trip_id
-        and st.trip_id = t.trip_id
-        and t.route_id = r.route_id
-        ORDER BY trip_id, st.stop_sequence
+                (SELECT 
+                    sub.route_id,
+                    max(sub.somme) as somme
+                FROM 
+                    (SELECT 
+                        t.route_id, st.trip_id, sum((stop_sequence)::int) as somme
+                    FROM 
+                        routes as r INNER JOIN
+                        trips as t on r.route_id = t.route_id INNER JOIN
+                        stop_times as st on st.trip_id = t.trip_id
+                    GROUP BY 
+                        t.route_id, st.trip_id
+                    ORDER BY 
+                        t.route_id
+                    ) as sub
+                group by 
+                    sub.route_id) as s1,
+                (SELECT 
+                    t.route_id, st.trip_id, sum((stop_sequence)::int) as somme
+                FROM 
+                    routes as r INNER JOIN
+                    trips as t on r.route_id = t.route_id INNER JOIN
+                    stop_times as st on st.trip_id = t.trip_id
+                GROUP BY 
+                    t.route_id, st.trip_id
+                ORDER BY 
+                    t.route_id) as s2
+            where 
+                s2.route_id = s1.route_id AND
+                s1.somme = s2.somme
+            GROUP BY
+                s2.route_id, s2.trip_id, s2.somme
+                ) as s3,
+                        stop_times as st,
+                        trips as t,
+                        stops as s,
+                        routes as r
+            where 
+                rownum = 1 
+                    AND s.stop_id = st.stop_id
+                    AND st.trip_id = s3.trip_id
+                    and st.trip_id = t.trip_id
+                    and t.route_id = r.route_id
+                    ORDER BY t.trip_id, st.stop_sequence;
 
             `
         )

@@ -52,7 +52,6 @@ const heuristic = function (n1, n2, g) {
 app.listen(8080, async () => {
     await Postgres.init()
     await buildTreeFromDeparture()
-    console.log(graph.getNodes().get(1670))
     console.log('app started on port 8080');
 })
 
@@ -77,7 +76,7 @@ app.get('/shortest_path/:departure/:destination', async (req, res) => {
         const { stop_id } = await Stops.findById(p)
         detailedPath.push(graph.getNodes().get(stop_id).getInfo())
     }
-    console.log(`temps total pris par l'algorithme : ${((Date.now() - time) / 1000) / 60} minute.s`)
+    console.log(`temps total pris par l'algorithme : ${((Date.now() - time) / 1000) } secondes`)
 
     res.send({ distanceTraveled, detailedPath })
 })
@@ -118,7 +117,8 @@ async function buildTreeFromDeparture() {
         )
     }
     for (const st of stopTimes) {
-        const { stop_id, stop_name, stop_desc, stop_lat, stop_lon, trip_id, stop_sequence, departure_time, route_short_name} = st
+        const { stop_id, stop_name, stop_desc, stop_lat, stop_lon, route_id, stop_sequence, departure_time, route_short_name} = st
+        //if (route_id == 'IDFM:C01742')
         const sourceInfo = {
             stop_name,
             stop_desc,
@@ -126,16 +126,17 @@ async function buildTreeFromDeparture() {
             stop_lon,
             route_short_name
         }
-        const hasTrip = dictionary.has(trip_id)
+        const hasRoute = dictionary.has(route_id)
         graph.addNode(stop_id, sourceInfo)
 
-        if (hasTrip) {
-
-            const trip = dictionary.get(trip_id)
-            const hasPreviousStop = trip.has(stop_sequence - 1)
-            const hasNextStop = trip.has(stop_sequence + 1)
+        if (hasRoute) {
+            const route = dictionary.get(route_id)
+            const nextStopSeq = (+stop_sequence) + 1+ ''
+            const previousStopSeq = (+stop_sequence) - 1+ ''
+            const hasPreviousStop = route.has(previousStopSeq)
+            const hasNextStop = route.has(nextStopSeq)
             if (hasNextStop) {
-                const nextStop = trip.get(stop_sequence + 1)
+                const nextStop = route.get(nextStopSeq)
                 
                 const destInfo = {
                     stop_name: nextStop.stop_name,
@@ -146,16 +147,17 @@ async function buildTreeFromDeparture() {
                     route_short_name: nextStop.route_short_name
 
                 }
-                graph.addPath(
+                let t = graph.addPath(
                     stop_id,
                     nextStop.stop_id,
                     Math.abs(getSecondsFromLocalTime(destInfo.departure_time) - getSecondsFromLocalTime(departure_time)) ,
                     sourceInfo,
                     destInfo
                 )
+
             }
             if (hasPreviousStop) {
-                const previousStop = trip.get(stop_sequence - 1)
+                const previousStop = route.get(previousStopSeq)
 
                 const destInfo = {
                     stop_name: previousStop.stop_name,
@@ -166,27 +168,31 @@ async function buildTreeFromDeparture() {
                     route_short_name: previousStop.route_short_name
 
                 }
-                graph.addPath(
+                let t  =graph.addPath(
                     stop_id,
                     previousStop.stop_id,
                     Math.abs(getSecondsFromLocalTime(destInfo.departure_time) - getSecondsFromLocalTime(departure_time)),
                     sourceInfo,
                     destInfo
                 )
+
             }
-            trip.set(stop_sequence, { stop_id, stop_name, stop_desc, stop_lat, stop_lon, time: departure_time, route_short_name })
+            route.set(stop_sequence, { stop_id, stop_name, stop_desc, stop_lat, stop_lon, time: departure_time, route_short_name })
 
         } else {
-            dictionary.set(trip_id, new Map())
-            dictionary.get(trip_id).set(stop_sequence, { stop_id, stop_name, stop_desc, stop_lat, stop_lon, time: departure_time , route_short_name})
+            dictionary.set(route_id, new Map())
+            dictionary.get(route_id).set(stop_sequence, { stop_id, stop_name, stop_desc, stop_lat, stop_lon, time: departure_time , route_short_name})
         }
 
     }
-    /*let testNode = graph.getNodes().get('IDFM:monomodalStopPlace:43239') // IDFM:22552 IDFM:26070 IDFM:30014 IDFM:461495
+    console.log(dictionary.get('IDFM:C01742'))
+    // trip IDFM:TN:SNCF:36c74e48-7801-4e27-8bd7-a6ee78d2e15d
+    // stop 
+    let testNode = graph.getNodes().get('IDFM:monomodalStopPlace:43213') // IDFM:22552 IDFM:26070 IDFM:30014 IDFM:461495
      testNode.getNexts().forEach(element => {
-        console.log(element.info)
+        //console.log(element.info)
 
-    });*/
+    });
 }
 
 
