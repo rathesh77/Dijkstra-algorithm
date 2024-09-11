@@ -47,8 +47,8 @@ class Graph {
         const sourceNode = this.addNode(source, sourceInfo);
         const arrivalNode = this.addNode(dest, arrivalInfo);
 
-        sourceNode.addNext(arrivalNode, weight)
-        arrivalNode.addNext(sourceNode, weight)
+        sourceNode.addNext(arrivalNode, +weight)
+        arrivalNode.addNext(sourceNode, +weight)
 
         return [sourceNode, arrivalNode]
     }
