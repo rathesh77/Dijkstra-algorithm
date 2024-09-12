@@ -2,6 +2,8 @@ drop
   index if exists trips_stops_idx;
 drop 
   table if exists stops CASCADE;
+drop 
+  table if exists pathways CASCADE;
   drop 
   table if exists  agency CASCADE;
 drop 
@@ -34,13 +36,13 @@ CREATE TABLE stops (
   stop_desc VARCHAR(256), 
   stop_lat VARCHAR(256), 
   stop_lon VARCHAR(256), 
-  zone_id  VARCHAR(256),
+  zone_id  smallint,
   stop_url VARCHAR(256),
-  location_type VARCHAR(256), 
+  location_type smallint, 
   parent_station VARCHAR(256),
   stop_timezone VARCHAR(256),
-  level_id VARCHAR(256),
-  wheelchair_boarding VARCHAR(256),
+  level_id smallint,
+  wheelchair_boarding smallint,
   platform_code VARCHAR(256)
 
 
@@ -48,7 +50,7 @@ CREATE TABLE stops (
 CREATE TABLE transfers (
   id serial PRIMARY KEY, from_stop_id VARCHAR(256), 
   to_stop_id VARCHAR(256), transfer_type VARCHAR(256), 
-  min_transfer_time VARCHAR(256)
+  min_transfer_time int
 );
 CREATE TABLE stop_times (
   id serial PRIMARY KEY,
@@ -56,12 +58,12 @@ CREATE TABLE stop_times (
   arrival_time TEXT, 
   departure_time TEXT, 
   stop_id VARCHAR(256), 
-  stop_sequence VARCHAR(256), 
+  stop_sequence smallint, 
   stop_headsign VARCHAR(256), 
-  pickup_type VARCHAR(256),
-  drop_off_type VARCHAR(256),
-  local_zone_id VARCHAR(256),
-  timepoint VARCHAR(256)
+  pickup_type smallint,
+  drop_off_type smallint,
+  local_zone_id smallint,
+  timepoint smallint
 );
 CREATE TABLE trips (
   route_id VARCHAR(256), 
@@ -69,24 +71,40 @@ CREATE TABLE trips (
   trip_id VARCHAR(256), 
   trip_headsign VARCHAR(256), 
   trip_short_name VARCHAR(256), 
-  direction_id VARCHAR(256), 
-  shape_id VARCHAR(256),
-  block_id VARCHAR(256),
-  wheelchair_accessible VARCHAR(256),
-  bikes_allowed VARCHAR(256)
+  direction_id smallint, 
+  shape_id smallint,
+  block_id smallint,
+  wheelchair_accessible smallint,
+  bikes_allowed smallint
 );
 CREATE TABLE routes (
   route_id VARCHAR(256), 
   agency_id VARCHAR(256), 
-  route_short_name VARCHAR(256), 
+  route_short_name VARCHAR(9), 
   route_long_name VARCHAR(256), 
   route_desc VARCHAR(256), 
-  route_type SMALLINT, 
+  route_type smallint, 
   route_url VARCHAR(256), 
-  route_color VARCHAR(256), 
-  route_text_color VARCHAR(256),
-  route_sort_order VARCHAR(256)
+  route_color VARCHAR(6), 
+  route_text_color VARCHAR(6),
+  route_sort_order int
 );
+  CREATE TABLE pathways (
+    pathway_id VARCHAR(256),
+    from_stop_id VARCHAR(256),
+    to_stop_id VARCHAR(256),
+    pathway_mode smallint,
+    is_bidirectional smallint,
+    length NUMERIC(6,3),
+    traversal_time INT,
+    stair_count INT,
+    max_slope INT,
+    min_width INT,
+    signposted_as VARCHAR(256),
+    reversed_signposted_as VARCHAR(256)
+
+
+  );
 COPY stops (stop_id,stop_code,stop_name,stop_desc,stop_lon,stop_lat,zone_id,stop_url,location_type,parent_station,stop_timezone,level_id,wheelchair_boarding,platform_code) FROM 'gtfs/stops.txt' DELIMITER ',' CSV HEADER;
 
 COPY transfers (
@@ -98,6 +116,7 @@ COPY  stop_times (trip_id,arrival_time,departure_time,stop_id,stop_sequence,pick
 COPY routes FROM 'gtfs/routes.txt' DELIMITER ',' CSV HEADER;
 COPY trips FROM 'gtfs/trips.txt' DELIMITER ',' CSV HEADER;
 COPY agency FROM 'gtfs/agency.txt' DELIMITER ',' CSV HEADER;
+COPY pathways FROM 'gtfs/pathways.txt' DELIMITER ',' CSV HEADER;
 
 select * from routes;
 select count(*) from stops;
@@ -105,7 +124,7 @@ select * from transfers;
 select * from trips;
 select * from stop_times;
 
-CREATE UNIQUE INDEX trips_stops_idx ON stop_times (trip_id, stop_id);
+CREATE INDEX trips_stops_idx ON stop_times (trip_id, stop_id);
 
 SELECT 
   indexname, 

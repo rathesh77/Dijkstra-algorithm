@@ -49,7 +49,7 @@ class Node {
      * @returns {Map<String, Node>} returns the array of neighbors
      */
     addNext(node, weight) {
-        node.getHeads().set(this.getValue(),{ heads: this, weight })
+        node.getHeads().set(this.getValue(),{ weight })
         this.nexts.set(node.getValue(), node)
         return this.nexts
     }

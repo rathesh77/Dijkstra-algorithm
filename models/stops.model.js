@@ -2,6 +2,19 @@ const Postgres = require('../db/Postgres')
 const Transfers = require('./transfers.model')
 class Stops {
 
+    static async getAll() {
+        const result = await Postgres.client.query(
+            `
+                SELECT
+                    stop_id, stop_name, stop_lon, stop_lat, stop_desc
+                FROM
+                    stops
+            `
+
+        )
+        return result.rows
+    }
+
     static async findById(stopId) {
         const result = await Postgres.client.query(
             `

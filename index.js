@@ -9,9 +9,10 @@ const Postgres = require('./db/Postgres')
 const StopTimes = require('./models/stop_times.model')
 const Transfers = require('./models/transfers.model')
 const Stops = require('./models/stops.model')
+//const Pathways = require('./models/pathways.model')
 app.use(cors())
 
-let graph = new Graph()
+let graph = new Graph(), stations = []
 const heuristic = function (n1, n2, g) {
     
     const getDistanceFromLatLonInKm = function(lat1, lon1, lat2, lon2) {
@@ -45,14 +46,22 @@ const heuristic = function (n1, n2, g) {
         const approxTravelTime = dist / avgSpeedOfPublicTransports
         return approxTravelTime
     } catch(e) {
-        //console.log(e)
+        console.log(e)
         return 0
     }
 }
 app.listen(8080, async () => {
     await Postgres.init()
+    stations = await Stops.getAll();
     await buildTreeFromDeparture()
     console.log('app started on port 8080');
+})
+app.get('/stations', async (req, res) => {
+    res.json(stations)
+})
+app.get('/node/:node_id', async (req, res) => {
+
+    res.json(graph.getNodes().get(req.params['node_id']))
 })
 
 app.get('/shortest_path/:departure/:destination', async (req, res) => {
@@ -78,16 +87,15 @@ app.get('/shortest_path/:departure/:destination', async (req, res) => {
     }
     console.log(`temps total pris par l'algorithme : ${((Date.now() - time) / 1000) } secondes`)
 
-    res.send({ distanceTraveled, detailedPath })
+    res.json({ distanceTraveled, detailedPath })
 })
 
 
-function deg2rad(deg) {
-    return deg * (Math.PI / 180)
-}
 async function buildTreeFromDeparture() {
     const stopTimes = await StopTimes.getAll()
     const transfers = await Transfers.getAll()
+    //const pathways = await Pathways.getAll()
+
     let dictionary = new Map()
     for (const t of transfers) {
         let {min_transfer_time, from_stop_name, from_route_short_name, to_route_short_name,from_stop_desc, to_stop_name, to_stop_desc, from_stop_id, to_stop_id, from_stop_lat, from_stop_lon, to_stop_lat, to_stop_lon } = t
@@ -118,6 +126,7 @@ async function buildTreeFromDeparture() {
     }
     for (const st of stopTimes) {
         const { stop_id, stop_name, stop_desc, stop_lat, stop_lon, route_id, stop_sequence, departure_time, route_short_name} = st
+        //console.log(stop_id, stop_name, stop_desc, stop_lat, stop_lon, route_id, stop_sequence, departure_time, route_short_name)
         //if (route_id == 'IDFM:C01742')
         const sourceInfo = {
             stop_name,
@@ -131,8 +140,8 @@ async function buildTreeFromDeparture() {
 
         if (hasRoute) {
             const route = dictionary.get(route_id)
-            const nextStopSeq = (+stop_sequence) + 1+ ''
-            const previousStopSeq = (+stop_sequence) - 1+ ''
+            const nextStopSeq = stop_sequence + 1
+            const previousStopSeq = stop_sequence - 1
             const hasPreviousStop = route.has(previousStopSeq)
             const hasNextStop = route.has(nextStopSeq)
             if (hasNextStop) {
@@ -185,14 +194,18 @@ async function buildTreeFromDeparture() {
         }
 
     }
-    console.log(dictionary.get('IDFM:C01742'))
-    // trip IDFM:TN:SNCF:36c74e48-7801-4e27-8bd7-a6ee78d2e15d
-    // stop 
-    let testNode = graph.getNodes().get('IDFM:monomodalStopPlace:43213') // IDFM:22552 IDFM:26070 IDFM:30014 IDFM:461495
-     testNode.getNexts().forEach(element => {
-        //console.log(element.info)
+    
+    /*
 
-    });
+    console.log('pathways', pathways.length)
+    for (const p of pathways) {
+        const { from_stop_id, to_stop_id, is_bidirectional, traversal_time } = p
+        if (graph.getNodes().get(from_stop_id) && graph.getNodes().get(from_stop_id).getHeads().get(to_stop_id)) {
+            console.log('exist')
+            graph.getNodes().get(from_stop_id).getHeads().get(to_stop_id).weight += traversal_time;
+        }
+
+    }*/
 }
 
 

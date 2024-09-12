@@ -35,7 +35,7 @@ class StopTimes {
                     max(sub.somme) as somme
                 FROM 
                     (SELECT 
-                        t.route_id, st.trip_id, sum((stop_sequence)::int) as somme
+                        t.route_id, st.trip_id, sum(stop_sequence) as somme
                     FROM 
                         routes as r INNER JOIN
                         trips as t on r.route_id = t.route_id INNER JOIN
@@ -48,7 +48,7 @@ class StopTimes {
                 group by 
                     sub.route_id) as s1,
                 (SELECT 
-                    t.route_id, st.trip_id, sum((stop_sequence)::int) as somme
+                    t.route_id, st.trip_id, sum(stop_sequence) as somme
                 FROM 
                     routes as r INNER JOIN
                     trips as t on r.route_id = t.route_id INNER JOIN
