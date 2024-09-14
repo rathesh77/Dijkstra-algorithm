@@ -23,11 +23,17 @@ class Graph {
      */
     addNode(value, info) {
         if (this.nodes.has(value)) {
-            this.nodes.get(value).info = info
-            return this.nodes.get(value)
+            for (const subNode of this.nodes.get(value)) {
+                if (subNode.info.route_short_name == info.route_short_name) {
+                    return subNode
+                }
+            }
+            const newNode = new Node(value, info)
+            this.nodes.get(value).push(newNode)
+            return newNode
         }
         const newNode = new Node(value, info)
-        this.nodes.set(value, newNode)
+        this.nodes.set(value, [newNode])
         return newNode
     }
     
@@ -39,7 +45,6 @@ class Graph {
      * @returns {Array}
      */
     addPath(source, dest, weight, sourceInfo, arrivalInfo) {
-        //console.log(source, dest, weight, sourceInfo, arrivalInfo)
         if (weight == null) {
             console.log('ajoutez un weight...')
             return

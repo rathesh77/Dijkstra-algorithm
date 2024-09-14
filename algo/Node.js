@@ -53,6 +53,9 @@ class Node {
         this.nexts.set(node.getValue(), node)
         return this.nexts
     }
+    displayInfo() {
+        console.log(JSON.stringify(this.info))
+    }
 }
 
 module.exports = Node

@@ -13,28 +13,28 @@ const Stops = require('./models/stops.model')
 app.use(cors())
 
 let graph = new Graph(), stations = []
+const getDistanceFromLatLonInKm = function(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2)
+        ;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const d = R * c;
+    return d;
+}
+
+const deg2rad = function(deg) {
+    return deg * (Math.PI / 180)
+}
 const heuristic = function (n1, n2, g) {
     
-    const getDistanceFromLatLonInKm = function(lat1, lon1, lat2, lon2) {
-        const R = 6371;
-        const dLat = deg2rad(lat2 - lat1);
-        const dLon = deg2rad(lon2 - lon1);
-        const a =
-            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2)
-            ;
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        const d = R * c;
-        return d;
-    }
-
-    const deg2rad = function(deg) {
-        return deg * (Math.PI / 180)
-    }
     try {
-        const begin = g.getNodes().get(n1)
-        const end = g.getNodes().get(n2)
+        const begin = n1
+        const end = n2
 
         const lat1 = begin.info.stop_lat
         const lon1 = begin.info.stop_lon
@@ -73,17 +73,19 @@ app.get('/shortest_path/:departure/:destination', async (req, res) => {
         return
     }
     const time = Date.now()
+    const departureName = departure+  '|' + graph.getNodes().get(departure)[0].info.route_short_name
+    const destinationName = destination+  '|' + graph.getNodes().get(destination)[0].info.route_short_name
 
-    const { path, distanceTraveled } = AStar.shortestPath(departure, destination, graph, heuristic)
+    const { path, distanceTraveled } = AStar.shortestPath(departureName, destinationName, graph, heuristic)
     console.log(path, (distanceTraveled / 60) + " minutes")
     if (path == undefined) {
         res.send({ error: 'error' })
         return
     }
     const detailedPath = []
+    const nodes = graph.getNodes()
     for (const p of path) {
-        const { stop_id } = await Stops.findById(p)
-        detailedPath.push(graph.getNodes().get(stop_id).getInfo())
+        detailedPath.push(AStar.findNodeByRouteShortName(p.split('|')[1], nodes.get(p.split('|')[0])).getInfo())
     }
     console.log(`temps total pris par l'algorithme : ${((Date.now() - time) / 1000) } secondes`)
 
@@ -126,8 +128,6 @@ async function buildTreeFromDeparture() {
     }
     for (const st of stopTimes) {
         const { stop_id, stop_name, stop_desc, stop_lat, stop_lon, route_id, stop_sequence, departure_time, route_short_name} = st
-        //console.log(stop_id, stop_name, stop_desc, stop_lat, stop_lon, route_id, stop_sequence, departure_time, route_short_name)
-        //if (route_id == 'IDFM:C01742')
         const sourceInfo = {
             stop_name,
             stop_desc,
@@ -146,7 +146,6 @@ async function buildTreeFromDeparture() {
             const hasNextStop = route.has(nextStopSeq)
             if (hasNextStop) {
                 const nextStop = route.get(nextStopSeq)
-                
                 const destInfo = {
                     stop_name: nextStop.stop_name,
                     stop_desc: nextStop.stop_desc,
@@ -154,12 +153,13 @@ async function buildTreeFromDeparture() {
                     stop_lon: nextStop.stop_lon,
                     departure_time: nextStop.time,
                     route_short_name: nextStop.route_short_name
-
+                    
                 }
+                const weight = Math.abs(getSecondsFromLocalTime(destInfo.departure_time) - getSecondsFromLocalTime(departure_time))
                 let t = graph.addPath(
                     stop_id,
                     nextStop.stop_id,
-                    Math.abs(getSecondsFromLocalTime(destInfo.departure_time) - getSecondsFromLocalTime(departure_time)) ,
+                    weight ,
                     sourceInfo,
                     destInfo
                 )
@@ -177,10 +177,12 @@ async function buildTreeFromDeparture() {
                     route_short_name: previousStop.route_short_name
 
                 }
+                const weight = Math.abs(getSecondsFromLocalTime(destInfo.departure_time) - getSecondsFromLocalTime(departure_time))
+
                 let t  =graph.addPath(
                     stop_id,
                     previousStop.stop_id,
-                    Math.abs(getSecondsFromLocalTime(destInfo.departure_time) - getSecondsFromLocalTime(departure_time)),
+                    weight,
                     sourceInfo,
                     destInfo
                 )
@@ -194,18 +196,8 @@ async function buildTreeFromDeparture() {
         }
 
     }
-    
-    /*
+    console.log(graph.getNodes().get('IDFM:monomodalStopPlace:47900'))
 
-    console.log('pathways', pathways.length)
-    for (const p of pathways) {
-        const { from_stop_id, to_stop_id, is_bidirectional, traversal_time } = p
-        if (graph.getNodes().get(from_stop_id) && graph.getNodes().get(from_stop_id).getHeads().get(to_stop_id)) {
-            console.log('exist')
-            graph.getNodes().get(from_stop_id).getHeads().get(to_stop_id).weight += traversal_time;
-        }
-
-    }*/
 }
 
 
