@@ -125,21 +125,20 @@ function computePath() {
       acc.push([curr.stop_lat, curr.stop_lon])
       return acc
     }
-    const latlngs = res.detailedPath.reduce(reducer, [])
+    const latlngs = res.path.reduce(reducer, [])
 
     map.fitBounds(latlngs, { minZoom: 10 })
 
-    let currentLine = res.detailedPath[0].route_short_name
+    let currentLine = res.path[0].route_short_name
     let headTowardDirection = `Prenez <span class='line-name'>${currentLine}</span> en direction de `
     let listStations = ''
-    let station = res.detailedPath[0].stop_name
+    let station = res.path[0].stop_name
     let finalStr = 'Durée: ' + formatDuration('' + res.distanceTraveled) + '</br>'
     let coords = []
-    let line = null
     let colors = ['red', 'orange', 'blue', 'green', 'purple']
     let nthColor = 0
     let previous = station
-    res.detailedPath.forEach(element => {
+    res.path.forEach(element => {
       const { stop_lat, stop_lon, stop_name, stop_desc, route_short_name } = element
       station = stop_name
       const line = route_short_name

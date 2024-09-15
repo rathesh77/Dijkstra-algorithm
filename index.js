@@ -9,47 +9,14 @@ const Postgres = require('./db/Postgres')
 const StopTimes = require('./models/stop_times.model')
 const Transfers = require('./models/transfers.model')
 const Stops = require('./models/stops.model')
+const { getDistanceFromLatLonInKm, getSecondsFromLocalTime } = require('./utils')
 //const Pathways = require('./models/pathways.model')
 app.use(cors())
 
 let graph = new Graph(), stations = []
-const getDistanceFromLatLonInKm = function(lat1, lon1, lat2, lon2) {
-    const R = 6371;
-    const dLat = deg2rad(lat2 - lat1);
-    const dLon = deg2rad(lon2 - lon1);
-    const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2)
-        ;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const d = R * c;
-    return d;
-}
 
-const deg2rad = function(deg) {
-    return deg * (Math.PI / 180)
-}
-const heuristic = function (n1, n2, g) {
-    
-    try {
-        const begin = n1
-        const end = n2
+let astar = new AStar()
 
-        const lat1 = begin.info.stop_lat
-        const lon1 = begin.info.stop_lon
-        const lat2 = end.info.stop_lat
-        const lon2 = end.info.stop_lon
-        const dist = getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2)
-
-        const avgSpeedOfPublicTransports = (begin.value + '').length == 4 ? 42/3600 : 20/3600 // km/s
-        const approxTravelTime = dist / avgSpeedOfPublicTransports
-        return approxTravelTime
-    } catch(e) {
-        console.log(e)
-        return 0
-    }
-}
 app.listen(8080, async () => {
     await Postgres.init()
     stations = await Stops.getAll();
@@ -73,23 +40,18 @@ app.get('/shortest_path/:departure/:destination', async (req, res) => {
         return
     }
     const time = Date.now()
-    const departureName = departure+  '|' + graph.getNodes().get(departure)[0].info.route_short_name
-    const destinationName = destination+  '|' + graph.getNodes().get(destination)[0].info.route_short_name
 
-    const { path, distanceTraveled } = AStar.shortestPath(departureName, destinationName, graph, heuristic)
+
+    const { path, distanceTraveled } = astar.shortestPath(departure, destination, heuristic)
     console.log(path, (distanceTraveled / 60) + " minutes")
     if (path == undefined) {
         res.send({ error: 'error' })
         return
     }
-    const detailedPath = []
-    const nodes = graph.getNodes()
-    for (const p of path) {
-        detailedPath.push(AStar.findNodeByRouteShortName(p.split('|')[1], nodes.get(p.split('|')[0])).getInfo())
-    }
+
     console.log(`temps total pris par l'algorithme : ${((Date.now() - time) / 1000) } secondes`)
 
-    res.json({ distanceTraveled, detailedPath })
+    res.json({ distanceTraveled, path })
 })
 
 
@@ -197,10 +159,27 @@ async function buildTreeFromDeparture() {
 
     }
     console.log(graph.getNodes().get('IDFM:monomodalStopPlace:47900'))
-
+    astar = new AStar(graph)
 }
 
 
-function getSecondsFromLocalTime(time){
-    return time.split(':').reduce((a, b, i) => i == 0 ? (+b * 3600) : i == 1 ? (a + (+b * 60)) : (+a + +b), 0)
-}
+const heuristic = function (n1, n2) {
+  
+    try {
+        const begin = n1
+        const end = n2
+  
+        const lat1 = begin.info.stop_lat
+        const lon1 = begin.info.stop_lon
+        const lat2 = end.info.stop_lat
+        const lon2 = end.info.stop_lon
+        const dist = getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2)
+  
+        const avgSpeedOfPublicTransports = (begin.value + '').length == 4 ? 42/3600 : 20/3600 // km/s
+        const approxTravelTime = dist / avgSpeedOfPublicTransports
+        return approxTravelTime
+    } catch(e) {
+        console.log(e)
+        return 0
+    }
+  }

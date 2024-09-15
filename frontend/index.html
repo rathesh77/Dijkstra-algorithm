@@ -77,7 +77,7 @@
 
         <div style="padding: 20px; box-shadow: 0 0px 5px 1px silver;">
             <div class="input-group mb-3">
-                <input type="text" id="departure_input" class="form-control rounded border-dark" value="Trocadéro 1637"
+                <input type="text" id="departure_input" class="form-control rounded border-dark" value="Torcy IDFM:monomodalStopPlace:43207"
                     onkeyup="giveSuggestions(event, this.nextSibling)">
                 <div class="suggestions">
 
@@ -85,7 +85,7 @@
             </div>
 
             <div class="input-group mb-3">
-                <input type="text" id="destination_input" class="form-control rounded border-dark" value="Saint-Lazare 1166841"
+                <input type="text" id="destination_input" class="form-control rounded border-dark" value="Châtelet les Halles IDFM:monomodalStopPlace:45102"
                     onkeyup="giveSuggestions(event, this.nextSibling)">
                 <div class="suggestions">
 
@@ -106,7 +106,6 @@
 
          httpGetAsync('http://localhost:8080/stations', (response) => {
             stations = JSON.parse(response)
-            console.log(stations)
         })
 
         let map = L.map('map', {
