@@ -49,7 +49,11 @@ class Node {
      * @returns {Map<String, Node>} returns the array of neighbors
      */
     addNext(node, weight) {
-        node.getHeads().set(this.getValue(),{ weight })
+        if (node.getHeads().get(this.getValue())) {
+            const w = node.getHeads().get(this.getValue()).weight
+            node.getHeads().set(this.getValue(),{ weight: w + weight  })
+        } else
+            node.getHeads().set(this.getValue(),{ weight })
         this.nexts.set(node.getValue(), node)
         return this.nexts
     }

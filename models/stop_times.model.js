@@ -24,7 +24,8 @@ class StopTimes {
                         somme,
                         rownum,
                         st.stop_sequence,
-                        st.departure_time
+                        st.departure_time,
+                        st.arrival_time
             FROM (
 
             SELECT

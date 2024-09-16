@@ -89,16 +89,18 @@ async function buildTreeFromDeparture() {
         )
     }
     for (const st of stopTimes) {
-        const { stop_id, stop_name, stop_desc, stop_lat, stop_lon, route_id, stop_sequence, departure_time, route_short_name} = st
+        const { stop_id, stop_name, stop_desc, stop_lat, stop_lon, route_id, stop_sequence, departure_time, arrival_time, route_short_name} = st
         const sourceInfo = {
             stop_name,
             stop_desc,
             stop_lat,
             stop_lon,
-            route_short_name
+            route_short_name,
+            departure_time,
+            arrival_time
         }
         const hasRoute = dictionary.has(route_id)
-        graph.addNode(stop_id, sourceInfo)
+        //graph.addNode(stop_id, sourceInfo)
 
         if (hasRoute) {
             const route = dictionary.get(route_id)
@@ -113,11 +115,12 @@ async function buildTreeFromDeparture() {
                     stop_desc: nextStop.stop_desc,
                     stop_lat: nextStop.stop_lat,
                     stop_lon: nextStop.stop_lon,
-                    departure_time: nextStop.time,
+                    departure_time: nextStop.departure_time,
+                    arrival_time: nextStop.arrival_time,
                     route_short_name: nextStop.route_short_name
                     
                 }
-                const weight = Math.abs(getSecondsFromLocalTime(destInfo.departure_time) - getSecondsFromLocalTime(departure_time))
+                const weight = Math.abs(getSecondsFromLocalTime(destInfo.arrival_time) - getSecondsFromLocalTime(departure_time))
                 let t = graph.addPath(
                     stop_id,
                     nextStop.stop_id,
@@ -135,11 +138,12 @@ async function buildTreeFromDeparture() {
                     stop_desc: previousStop.stop_desc,
                     stop_lat: previousStop.stop_lat,
                     stop_lon: previousStop.stop_lon,
-                    departure_time: previousStop.time,
+                    departure_time: previousStop.departure_time,
+                    arrival_time: previousStop.arrival_time,
                     route_short_name: previousStop.route_short_name
 
                 }
-                const weight = Math.abs(getSecondsFromLocalTime(destInfo.departure_time) - getSecondsFromLocalTime(departure_time))
+                const weight = Math.abs(getSecondsFromLocalTime(arrival_time) - getSecondsFromLocalTime(destInfo.departure_time))
 
                 let t  =graph.addPath(
                     stop_id,
@@ -150,11 +154,11 @@ async function buildTreeFromDeparture() {
                 )
 
             }
-            route.set(stop_sequence, { stop_id, stop_name, stop_desc, stop_lat, stop_lon, time: departure_time, route_short_name })
+            route.set(stop_sequence, { stop_id, stop_name, stop_desc, stop_lat, stop_lon, departure_time, arrival_time, route_short_name })
 
         } else {
             dictionary.set(route_id, new Map())
-            dictionary.get(route_id).set(stop_sequence, { stop_id, stop_name, stop_desc, stop_lat, stop_lon, time: departure_time , route_short_name})
+            dictionary.get(route_id).set(stop_sequence, { stop_id, stop_name, stop_desc, stop_lat, stop_lon, arrival_time,departure_time , route_short_name})
         }
 
     }
